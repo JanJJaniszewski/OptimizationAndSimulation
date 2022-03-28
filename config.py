@@ -6,7 +6,6 @@ directions = ['n', 'e', 's', 'w']
 paths = ['ne', 'ns', 'nw', 'en', 'es', 'ew', 'sn', 'se', 'sw', 'wn', 'we', 'ws']
 
 # Logging
-logging.basicConfig(level=logging.INFO)
 
 # Simulation
 
