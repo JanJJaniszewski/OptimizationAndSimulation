@@ -1,3 +1,4 @@
+import datetime
 from copy import deepcopy as dc
 from itertools import cycle
 import numpy as np
@@ -186,6 +187,10 @@ class Road():
             self.queue.pop(0)
             #logger.info(f'-------------------------VEHICLE LEFT: {self.path}')
 
+            # slowdown_cycles: all cars slow down when in front of traffic light
+            # service_time: Time of acceleration
+            # ticks green: How long is traffic light on 'GO'/'GREEN' already
+            # service_time = 1s + (1s / (1+'GO'(s))
             counter = next(cf.slowdown_cycles) + (vehicle.service_time / (ticks_green+1))
         else:
             counter = 0
@@ -205,5 +210,9 @@ if __name__ == '__main__':
     sim = Simulation()
     for i in range(1, cf.ticks + 1):
         sim.update()
-    ft.write_feather(sim.results, f"results.feather")
+    is_testrun = True
+    if is_testrun:
+        ft.write_feather(sim.results, f"data/results_testrun.feather")
+    else:
+        ft.write_feather(sim.results, f"data/results_{datetime.datetime}.feather")
 
