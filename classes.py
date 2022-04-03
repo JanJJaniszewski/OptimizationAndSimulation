@@ -32,11 +32,14 @@ class Simulation():
             'service0': 2.4,
             'service1': 2.5,
             'service2': 2.6,
+            'service3': 2.7,
+            'service4': 2.8,
+            'service5': 2.9
         }
         self.roads = self.create_roads(cf.paths)
         self.results = pd.DataFrame()
         self.ticks_green = 0
-        self.services = ['service0', 'service1', 'service2']
+        self.services = ['service0', 'service1', 'service2', 'service3', 'service4', 'service5']
         self.ticks = 0
         self.waiting_times = pd.DataFrame()
 
@@ -60,6 +63,9 @@ class Simulation():
             self.counters['service0'] -= self.ticks
             self.counters['service1'] -= self.ticks
             self.counters['service2'] -= self.ticks
+            self.counters['service3'] -= self.ticks
+            self.counters['service4'] -= self.ticks
+            self.counters['service5'] -= self.ticks
 
     def update(self):
         logger.debug('UPDATE -----------------------------------------')
@@ -74,19 +80,23 @@ class Simulation():
 
         self.tiktok()
         if lowest_counter == 'lights':
-            self.counters['lights'] = self.traffic_light.update(roads=self.roads.values())
+            self.counters['lights'] = self.traffic_light.update()
         elif lowest_counter == 'arrivals':
             vehicle, self.counters['arrivals'] = self.vehicle_generator.vehicles_arrive(clock=self.clock)
             self.roads[vehicle.path].queue.append(vehicle)
         elif (lowest_counter in self.services):
             road_num = int(lowest_counter[-1])
-            path = self.traffic_light.served_roads[road_num]
-            queuelength = len(self.roads[path].queue)
-            if queuelength == 0:
-                self.counters[lowest_counter] = 0.1 + self.counters['arrivals']
+            try:
+                path = self.traffic_light.served_roads[road_num]
+            except IndexError as e:
+                logger.warning(f'{e}: That means that we assumed there are more green lights than there are. Nothing to worry about though.')
             else:
-                self.counters[lowest_counter], vehicle_waiting_time = self.roads[path].vehicles_leave(self.ticks_green, clock = self.clock)
-                self.save_waiting_times(vehicle_waiting_time, path, queuelength)
+                queuelength = len(self.roads[path].queue)
+                if queuelength == 0:
+                    self.counters[lowest_counter] = 0.1 + self.counters['arrivals']
+                else:
+                    self.counters[lowest_counter], vehicle_waiting_time = self.roads[path].vehicles_leave(self.ticks_green, clock = self.clock)
+                    self.save_waiting_times(vehicle_waiting_time, path, queuelength)
 
         self.save_results()
 
@@ -132,13 +142,15 @@ class Lights():
         logger.debug('Initiating traffic lights (server)')
         self.active_episodes = cf.traffic_light_series
         self.active_episode = next(self.active_episodes)
+        self.traffic_light_all_stop = cf.traffic_light_all_stop
         self.durations = cf.traffic_light_episode_durations
         self.served_roads = []
+        self.episode_type = cf.episode_type
 
     def block_crossing(self):
         logger.debug(f'Blocking intersection for all incoming traffic')
         counter = cf.traffic_light_crossing_block_in_ticks
-        self.active_episode = cf.traffic_light_all_stop
+        self.active_episode = self.traffic_light_all_stop
 
         return counter
 
@@ -149,11 +161,10 @@ class Lights():
 
         return counter
 
-    def update(self, roads):
-        episode_type = next(cf.episode_type)
+    def update(self):
+        episode_type = next(self.episode_type)
         if episode_type == 'block':
-            queue_exploding = min([len(road.queue) for road in roads if road.path in self.served_roads]) > 0
-
+            #queue_exploding = min([len(road.queue) for road in roads if road.path in self.served_roads]) > 0
             counter = self.block_crossing()
             self.served_roads = []
         elif episode_type == 'go':
@@ -228,8 +239,7 @@ if __name__ == '__main__':
     is_testrun = True
     if is_testrun:
         ft.write_feather(sim.results, f"data/results_testrun.feather")
-        ft.write_feather(sim.waiting_times, 'fdata/waitingtimes_testrun.feather')
+        ft.write_feather(sim.waiting_times, f'data/waitingtimes_testrun.feather')
     else:
         ft.write_feather(sim.results, f"data/results_{datetime.datetime}.feather")
         ft.write_feather(sim.results, f"data/waitingtimes_{datetime.datetime}.feather")
-

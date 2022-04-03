@@ -51,7 +51,7 @@ path_choice_cycle = cycle(random.choices(list(path_distribution.keys()), weights
 traffic_light_all_stop = {x: ('stop' if x not in ['ws', 'nw', 'se', 'en'] else 'go') for x in paths}
 # CAN BE CHANGED
 traffic_light_crossing_block_in_ticks = 10
-traffic_light_episode_durations = cycle([20, 30, 20, 30]) # Experiment
+traffic_light_episode_durations = cycle([60, 60, 60, 60]) # Experiment
 number_of_traffic_light_episodes = 4
 ################
 traffic_light_series = [dc(traffic_light_all_stop) for x in range(0, number_of_traffic_light_episodes)]
@@ -59,10 +59,10 @@ episode_type = cycle(['go', 'block'])
 
 # Experiment with this (also randomize the order?)
 # CAN BE CHANGED
-traffic_light_series[0].update({'ne':'go', 'ns':'go', 'nw':'go'})
-traffic_light_series[1].update({'we':'go', 'ws':'go', 'wn':'go'})
-traffic_light_series[2].update({'se':'go', 'sn':'go', 'sw':'go'})
-traffic_light_series[3].update({'en':'go', 'es':'go', 'ew':'go'})
+traffic_light_series[0].update({'ne':'go', 'ns':'go'})
+traffic_light_series[1].update({'we':'go', 'wn':'go'})
+traffic_light_series[2].update({'sn':'go', 'sw':'go'})
+traffic_light_series[3].update({'es':'go', 'ew':'go'})
 ################
 
 traffic_light_series = cycle(traffic_light_series)
