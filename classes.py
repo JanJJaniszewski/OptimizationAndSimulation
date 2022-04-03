@@ -24,19 +24,19 @@ class Simulation():
     def __init__(self):
         #logger.info('Initiating everything')
         self.clock = 0
+        self.traffic_light = Lights()
+        self.vehicle_generator = VehicleGenerator()
         self.counters = {
-            'lights': next(cf.traffic_light_episode_durations),
-            'arrivals': next(cf.arrival_time_cycle),
+            'lights': next(self.traffic_light.durations),
+            'arrivals': next(self.vehicle_generator.arrival_time_cycle),
             'service0': 2.4,
             'service1': 2.5,
             'service2': 2.6,
         }
-        self.traffic_light = Lights()
         self.roads = self.create_roads(cf.paths)
         self.results = pd.DataFrame()
         self.ticks_green = 0
         self.services = ['service0', 'service1', 'service2']
-        self.vehicle_generator = VehicleGenerator()
         self.ticks = 0
         self.waiting_times = pd.DataFrame()
 
@@ -74,7 +74,7 @@ class Simulation():
 
         self.tiktok()
         if lowest_counter == 'lights':
-            self.counters['lights'] = self.traffic_light.update()
+            self.counters['lights'] = self.traffic_light.update(roads=self.roads.values())
         elif lowest_counter == 'arrivals':
             vehicle, self.counters['arrivals'] = self.vehicle_generator.vehicles_arrive(clock=self.clock)
             self.roads[vehicle.path].queue.append(vehicle)
@@ -130,7 +130,9 @@ class Lights():
     # The server
     def __init__(self):
         logger.debug('Initiating traffic lights (server)')
-        self.active_episode = next(cf.traffic_light_series)
+        self.active_episodes = cf.traffic_light_series
+        self.active_episode = next(self.active_episodes)
+        self.durations = cf.traffic_light_episode_durations
         self.served_roads = []
 
     def block_crossing(self):
@@ -142,14 +144,16 @@ class Lights():
 
     def change_episode(self):
         logger.debug('Freeing server for new requests (deblocking intersection) and renewing counter')
-        self.active_episode = next(cf.traffic_light_series)
-        counter = next(cf.traffic_light_episode_durations)
+        self.active_episode = next(self.active_episodes)
+        counter = next(self.durations)
 
         return counter
 
-    def update(self):
+    def update(self, roads):
         episode_type = next(cf.episode_type)
         if episode_type == 'block':
+            queue_exploding = min([len(road.queue) for road in roads if road.path in self.served_roads]) > 0
+
             counter = self.block_crossing()
             self.served_roads = []
         elif episode_type == 'go':
@@ -165,13 +169,13 @@ class Lights():
 class VehicleGenerator():
     # The client generation function
     def __init__(self):
-        pass
+        self.arrival_time_cycle = cf.arrival_time_cycle
 
     def vehicles_arrive(self, clock):
         vehicle_type = next(cf.vehicle_type_cycle)
         vehicle_service_time = next(cf.service_time_cycles[vehicle_type])
         vehicle = Car(vehicle_type=vehicle_type, service_time=vehicle_service_time, startclock=clock)
-        counter = next(cf.arrival_time_cycle)
+        counter = next(self.arrival_time_cycle)
         #logger.debug(f'-------------------------VEHICLE ARRIVED: {vehicle.path}')
         return vehicle, counter
 
@@ -224,6 +228,8 @@ if __name__ == '__main__':
     is_testrun = True
     if is_testrun:
         ft.write_feather(sim.results, f"data/results_testrun.feather")
+        ft.write_feather(sim.waiting_times, 'fdata/waitingtimes_testrun.feather')
     else:
         ft.write_feather(sim.results, f"data/results_{datetime.datetime}.feather")
+        ft.write_feather(sim.results, f"data/waitingtimes_{datetime.datetime}.feather")
 
