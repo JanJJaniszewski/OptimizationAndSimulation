@@ -38,6 +38,7 @@ class Simulation():
         self.services = ['service0', 'service1', 'service2']
         self.vehicle_generator = VehicleGenerator()
         self.ticks = 0
+        self.waiting_times = pd.DataFrame()
 
     def create_roads(self, road_list):
         roads = dict()
@@ -47,7 +48,7 @@ class Simulation():
 
         return roads
 
-    def tiktok(self, event_type):
+    def tiktok(self):
         self.clock += self.ticks
         self.ticks_green += self.ticks
         self.counters['lights'] -= self.ticks
@@ -71,21 +72,21 @@ class Simulation():
             lowest_counter = min(self.counters, key=self.counters.get)
         self.ticks = self.counters[lowest_counter]
 
+        self.tiktok()
         if lowest_counter == 'lights':
-            self.tiktok('lights')
             self.counters['lights'] = self.traffic_light.update()
         elif lowest_counter == 'arrivals':
-            self.tiktok('arrivals')
-            vehicle, self.counters['arrivals'] = self.vehicle_generator.vehicles_arrive()
+            vehicle, self.counters['arrivals'] = self.vehicle_generator.vehicles_arrive(clock=self.clock)
             self.roads[vehicle.path].queue.append(vehicle)
         elif (lowest_counter in self.services):
-            self.tiktok('services')
             road_num = int(lowest_counter[-1])
             path = self.traffic_light.served_roads[road_num]
-            if len(self.roads[path].queue) == 0:
+            queuelength = len(self.roads[path].queue)
+            if queuelength == 0:
                 self.counters[lowest_counter] = 0.1 + self.counters['arrivals']
             else:
-                self.counters[lowest_counter] = self.roads[path].vehicles_leave(self.ticks_green)
+                self.counters[lowest_counter], vehicle_waiting_time = self.roads[path].vehicles_leave(self.ticks_green, clock = self.clock)
+                self.save_waiting_times(vehicle_waiting_time, path, queuelength)
 
         self.save_results()
 
@@ -103,6 +104,12 @@ class Simulation():
                                                          'indicator': indicators,
                                                          'queue': queues})], ignore_index=True)
 
+    def save_waiting_times(self, vehicle_waiting_time, path, queuelength):
+        self.waiting_times = pd.concat([self.waiting_times, pd.DataFrame({'clock': [self.clock],
+                                                              'road': [path],
+                                                                    'waiting_time': vehicle_waiting_time,
+                                                         'queue': [queuelength]})], ignore_index=True)
+
 class Car():
     # The client
     def __str__(self):
@@ -111,10 +118,11 @@ class Car():
     def __repr__(self):
         return (self.vehicle_type)
 
-    def __init__(self, vehicle_type, service_time):
+    def __init__(self, vehicle_type, service_time, startclock):
         self.vehicle_type = vehicle_type
         self.service_time = service_time
         self.path = next(cf.path_choice_cycle)
+        self.startclock = startclock
 
 
 
@@ -159,10 +167,10 @@ class VehicleGenerator():
     def __init__(self):
         pass
 
-    def vehicles_arrive(self):
+    def vehicles_arrive(self, clock):
         vehicle_type = next(cf.vehicle_type_cycle)
         vehicle_service_time = next(cf.service_time_cycles[vehicle_type])
-        vehicle = Car(vehicle_type=vehicle_type, service_time=vehicle_service_time)
+        vehicle = Car(vehicle_type=vehicle_type, service_time=vehicle_service_time, startclock=clock)
         counter = next(cf.arrival_time_cycle)
         #logger.debug(f'-------------------------VEHICLE ARRIVED: {vehicle.path}')
         return vehicle, counter
@@ -181,9 +189,11 @@ class Road():
     def __str__(self):
         return self.path
 
-    def vehicles_leave(self, ticks_green):
+    def vehicles_leave(self, ticks_green, clock):
         if len(self.queue) > 0:
             vehicle = dc(self.queue[0])
+            vehicle_waiting_time = clock - vehicle.startclock
+
             self.queue.pop(0)
             #logger.info(f'-------------------------VEHICLE LEFT: {self.path}')
 
@@ -194,8 +204,9 @@ class Road():
             counter = next(cf.slowdown_cycles) + (vehicle.service_time / (ticks_green+1))
         else:
             counter = 0
+            vehicle_waiting_time = -999
 
-        return counter
+        return counter, vehicle_waiting_time
 
 
 
