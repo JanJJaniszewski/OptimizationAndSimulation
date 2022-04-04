@@ -28,5 +28,5 @@ if __name__ == '__main__':
     total_waiting_times['simulation'] = sim_number
 
     # Saving as feather
-    ft.write_feather(total_results, f"data/results_{datetime.datetime}.feather")
-    ft.write_feather(total_waiting_times, f"data/waitingtimes_{datetime.datetime}.feather")
+    ft.write_feather(total_results, f"data/results_{datetime.datetime.now()}.feather")
+    ft.write_feather(total_waiting_times, f"data/waitingtimes_{datetime.datetime.now()}.feather")
