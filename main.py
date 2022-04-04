@@ -28,6 +28,6 @@ if __name__ == '__main__':
     total_waiting_times['simulation'] = sim_number
 
     # Saving as feather
-    nowtime = "{:%Y_%m_%d}".format(datetime.datetime.now())
+    nowtime = "{:%Y_%m_%d_%H_%M}".format(datetime.datetime.now())
     ft.write_feather(total_results, f"data/multirun_results_{nowtime}.feather")
     ft.write_feather(total_waiting_times, f"data/multirun_waitingtimes_{nowtime}.feather")
