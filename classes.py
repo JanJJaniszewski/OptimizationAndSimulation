@@ -241,5 +241,7 @@ if __name__ == '__main__':
         ft.write_feather(sim.results, f"data/results_testrun.feather")
         ft.write_feather(sim.waiting_times, f'data/waitingtimes_testrun.feather')
     else:
-        ft.write_feather(sim.results, f"data/results_{datetime.datetime.now()}.feather")
-        ft.write_feather(sim.waiting_times, f"data/waitingtimes_{datetime.datetime.now()}.feather")
+        nowtime = "{:%Y_%m_%d}".format(datetime.datetime.now())
+
+        ft.write_feather(sim.results, f"data/results_{nowtime}.feather")
+        ft.write_feather(sim.waiting_times, f"data/waitingtimes_{nowtime}.feather")
